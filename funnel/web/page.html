@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>__HEADING__</title>
+<!-- Ask search engines not to index, follow, cache or show snippets of this page. -->
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noai, noimageai">
+<link rel="stylesheet" href="assets/funnel.css?v=__CSS_V__">
+<!-- Plotly is loaded here, before the chart is drawn below. -->
+<script src="assets/plotly.min.js?v=__PLOTLY_V__"></script>
+</head>
+<body>
+<!-- Header: the title, then ONE line: the excluded-companies note and the credit line (mailto link + creation time). -->
+<div id="head">
+  <h1>__HEADING__</h1>
+  <div id="meta"><span id="excluded">__EXCLUDED__</span><span id="credit" data-picture="__PICTURE_CREDIT__">Created by <a href="mailto:__EMAIL__">__CREATED_BY__</a> on __CREATED_AT__</span></div>
+</div>
+<!-- Toolbar: search box with suggestion list, the three buttons, and the info text. -->
+<div id="bar">
+  <div id="searchrow">
+    <input id="q" type="text" placeholder="Search company name or domain, then press Enter" autocomplete="off">
+    <div id="sug"></div>
+  </div>
+  <button id="rand">Random</button>
+  <button id="success">Random success</button>
+  <button id="clear">Clear</button>
+  <!-- Camera button: saves a picture of the page (hidden until a company is selected). -->
+  <button id="snap" title="Save a picture of this page">&#128247;</button><span id="snapmsg"></span>
+  <div id="info"></div>
+</div>
+<!-- The chart box: the scrolling chart (inserted by Python) with the frozen month row and the empty highlight
+     overlay on top of it, and the compass arrows floating over its bottom right corner. -->
+<div id="graphbox">
+  <div id="scroller"><div id="wrap" style="__WRAPSTYLE__">
+    <div id="months"></div>
+    __PLOT__
+    <svg id="ov"></svg>
+  </div></div>
+  <!-- Compass: each arrow scrolls the chart to its top-most (N), left-most (W), bottom-most (S) or right-most (E) position. -->
+  <div id="compass">
+    <button id="cn" title="Go to the top (north)" aria-label="Go to the top"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 2 L14.5 13 H1.5 Z" fill="currentColor"/></svg></button>
+    <button id="cw" title="Go all the way left (west)" aria-label="Go all the way left"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 2 L14.5 13 H1.5 Z" fill="currentColor"/></svg></button>
+    <button id="ce" title="Go all the way right (east)" aria-label="Go all the way right"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 2 L14.5 13 H1.5 Z" fill="currentColor"/></svg></button>
+    <button id="cs" title="Go to the bottom (south)" aria-label="Go to the bottom"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 2 L14.5 13 H1.5 Z" fill="currentColor"/></svg></button>
+  </div>
+</div>
+<!-- The popup that lists the companies of a stage box (hidden until a box is clicked). -->
+<div id="modalbg">
+  <div id="modal">
+    <div id="mhead"><span id="mtitle"></span><button id="mclose">&times;</button></div>
+    <!-- The switch between the three groups of companies (hidden for the Pre bucket box). -->
+    <div id="mmode"><button class="mmode on" id="mnow"></button><button class="mmode" id="mever"></button><button class="mmode" id="mshort"></button></div>
+    <!-- Sorting: what to sort by, and ascending (Ascd) or descending (Desc). -->
+    <div id="msort">
+      <span class="slabel">Sort by</span>
+      <button class="sbtn on" id="sname" title="Alphabetically company name">Lexical</button>
+      <button class="sbtn" id="screated" title="By the date the company was created">Created</button>
+      <button class="sbtn" id="sentered" title="By the date the company entered this stage">Entered Stage</button>
+      <span class="sgap"></span>
+      <button class="sbtn on" id="sasc" title="Ascending">Ascd</button>
+      <button class="sbtn" id="sdsc" title="Descending">Desc</button>
+    </div>
+    <input id="mfilter" type="text" placeholder="Filter these companies by name or domain" autocomplete="off">
+    <!-- Show only: tick the stages companies are IN NOW (the check boxes are made by the page code). -->
+    <div id="mshow">
+      <span class="slabel">Show only:</span>
+      <span id="mchecks"></span>
+      <button class="sbtn" id="mall" title="Tick every box">Select All</button>
+      <button class="sbtn" id="mnone" title="Untick every box">Select None</button>
+    </div>
+    <div id="mcount"></div>
+    <div id="mlist"></div>
+  </div>
+</div>
+<!-- The page code (a separate file) and then the call that starts it, with the data as its argument. -->
+<script src="assets/funnel.js?v=__JS_V__"></script>
+<script>
+if (!window.Plotly || !window.__fs) {
+  // Plotly or the page code did not load: the assets folder is missing or not next to this page.
+  document.body.insertAdjacentHTML("afterbegin", '<div style="margin:40px;font:16px Arial">The page files could not be loaded. Upload the "assets" folder next to index.html.</div>');
+} else {
+  window.__fs(__DATA__);
+}
+</script>
+</body></html>

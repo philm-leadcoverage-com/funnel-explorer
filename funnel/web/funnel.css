@@ -1,0 +1,129 @@
+  /* Page basics: plain system font, no outer margin. The page is a column exactly as tall as the window:
+     the title, the toolbar, then the chart box, which takes the rest of the height and scrolls inside itself. */
+  body { font-family: Arial, Helvetica, sans-serif; margin: 0; background: #fff;
+         height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+  #head, #bar { flex: 0 0 auto; }
+  /* Header block: the title, then ONE line: the "companies excluded" note followed by the credit line. */
+  #head h1 { font-size: 24px; margin: 16px 20px 2px; }
+  #meta { font-size: 13px; color: #555; margin: 2px 20px 12px; white-space: nowrap; }
+  #excluded { color: #444; }
+  #excluded:not(:empty)::after { content: "|"; margin: 0 10px; color: #999; }
+  /* The toolbar (search box + buttons + info text) sits above the chart box and stays there. */
+  #bar { position: relative; z-index: 50; background: #fff; border-bottom: 1px solid #ddd;
+         padding: 10px 20px; }
+  /* Wrapper that lets the suggestion list be positioned under the search box. */
+  #searchrow { position: relative; display: inline-block; vertical-align: middle; }
+  /* The search box and all four buttons have the same height and sit on one line. */
+  #q, #bar button { box-sizing: border-box; height: 36px; vertical-align: middle; }
+  #q { width: 440px; padding: 0 10px; font-size: 14px; border: 1px solid #999; border-radius: 4px; }
+  #clear, #rand, #success, #snap { padding: 0 12px; font-size: 14px; line-height: 1; margin-left: 6px; cursor: pointer; }
+  /* The camera button (saves a picture) is hidden until a company is selected. */
+  #snap { font-size: 16px; display: none; }
+  #snapmsg { font-size: 12px; color: #555; margin-left: 8px; vertical-align: middle; }
+  /* The drop-down list of matching companies (hidden until you type). */
+  #sug { position: absolute; left: 0; top: 38px; width: 640px; max-height: 330px; overflow-y: auto;
+         background: #fff; border: 1px solid #aaa; box-shadow: 0 4px 12px rgba(0,0,0,.18);
+         display: none; z-index: 60; }
+  .item { padding: 6px 10px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #eee; }
+  .item:hover { background: #eef3ff; }
+  .item .sub { color: #666; }
+  .item .nc { color: #b45309; }
+  /* The text under the search box (company details and its month-end path). */
+  /* A company with many details can be tall: the panel scrolls instead of taking over the screen. */
+  #info { font-size: 13px; margin-top: 8px; line-height: 1.5; max-height: 38vh; overflow-y: auto; }
+  #info .path { color: #333; }
+  /* The logo column floats at the left, so the text runs along its right side and, once it is below the
+     logos, continues all the way to the left margin. It holds the company logo (a link to its website)
+     with the agency logo underneath. */
+  .logocol { float: left; width: 64px; margin: 0 12px 6px 0; display: flex; flex-direction: column; gap: 8px; }
+  .logobox { box-sizing: border-box; width: 64px; height: 64px; border: 1px solid #ddd; border-radius: 6px;
+             background: #fff; display: flex; align-items: center; justify-content: center; }
+  /* The blank place kept for the company logo when a company has none, so the agency logo stays where it is. */
+  .logogap { width: 64px; height: 64px; }
+  a.logobox { cursor: pointer; }
+  .logobox img { max-width: 56px; max-height: 56px; object-fit: contain; }
+  .agencylogo { display: block; width: 64px; }
+  a.agencylogo { cursor: pointer; }
+  .agencylogo img { display: block; max-width: 64px; max-height: 48px; margin: 0 auto; }
+  /* The extra details: ONE <dl> holding every label (dt) and value (dd) pair, each pair in its own <div>. The
+     pairs run on one after the other like words, so a line only breaks BETWEEN whole pairs; a pair that is
+     longer than a whole line wraps inside itself. The font is a little smaller than the rest of the panel. */
+  dl.detail { margin: 0; color: #222; font-size: 12px; }
+  dl.detail > div { display: inline-block; max-width: 100%; margin-right: 28px; vertical-align: top; }
+  dl.detail dt, dl.detail dd { display: inline; margin: 0; }
+  dl.detail dt { color: #666; margin-right: 0.35em; }
+  dl.detail dt::after { content: ":"; }
+  /* The chart box fills the rest of the window. The scroller inside it ALWAYS shows both scroll bars
+     (overflow: scroll), and the compass arrows float over its bottom right corner without scrolling with it. */
+  #graphbox { position: relative; flex: 1 1 auto; min-height: 200px; }
+  #scroller { position: absolute; left: 0; right: 0; top: 0; bottom: 0; overflow: scroll; }
+  /* Chrome, Edge and Safari: draw the scroll bars ourselves, so they are always visible (also on a Mac that
+     hides them) and easy to grab. Firefox gets its own colors. */
+  #scroller::-webkit-scrollbar { width: 16px; height: 16px; }
+  #scroller::-webkit-scrollbar-track { background: #eceff3; }
+  #scroller::-webkit-scrollbar-thumb { background: #9aa4b2; border-radius: 8px; border: 3px solid #eceff3; }
+  #scroller::-webkit-scrollbar-thumb:hover { background: #7c8798; }
+  #scroller::-webkit-scrollbar-corner { background: #eceff3; }
+  @supports not selector(::-webkit-scrollbar) { #scroller { scrollbar-color: #9aa4b2 #eceff3; } }
+  /* The frozen month names: one row with just the column names (the months and the Pre bucket). It sits right
+     above the counts at the top of the chart, sticks to the top of the chart box while you scroll up and down,
+     and scrolls sideways with the chart. The page code places it (see placeMonthRow) and gives it a negative
+     bottom margin, so it takes no room and never pushes the chart down. */
+  #months { position: sticky; top: 0; z-index: 6; height: 28px; margin-bottom: -28px; box-sizing: border-box;
+            background: #fff; border-bottom: 1px solid #e3e6ea; }
+  .mcol { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; color: #444;
+          font: bold 12px "Open Sans", verdana, arial, sans-serif; line-height: 27px; }
+  /* The compass: four round arrow buttons in a cross. Each one jumps to an edge of the chart. */
+  #compass { position: absolute; right: 32px; bottom: 32px; z-index: 20; display: grid; opacity: .92;
+             grid-template-columns: repeat(3, 26px); grid-template-rows: repeat(3, 26px); gap: 3px; }
+  #compass button { padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer;
+                    border: 1px solid #7c8798; border-radius: 50%; background: #fff; color: #2f80ed; }
+  #compass button:hover:not(:disabled) { background: #eef3ff; }
+  #compass button:disabled { opacity: .35; cursor: default; }
+  #cn { grid-column: 2; grid-row: 1; }
+  #cw { grid-column: 1; grid-row: 2; }
+  #ce { grid-column: 3; grid-row: 2; }
+  #cs { grid-column: 2; grid-row: 3; }
+  #cw svg { transform: rotate(-90deg); }
+  #ce svg { transform: rotate(90deg); }
+  #cs svg { transform: rotate(180deg); }
+  /* The chart and the highlight overlay are stacked on top of each other. */
+  /* flow-root: the frozen month row's margins stay inside the wrap and cannot move it. */
+  #wrap { position: relative; display: flow-root; }
+  /* The overlay draws the pink line and outlines; it ignores the mouse so the chart stays clickable. */
+  #ov { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 5; }
+  /* The popup (stage company list): a dimmed full-screen backdrop plus a white dialog. */
+  #modalbg { display: none; position: fixed; left: 0; top: 0; right: 0; bottom: 0;
+             background: rgba(0,0,0,.35); z-index: 100; }
+  #modal { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); width: 640px;
+           max-width: 94vw; max-height: 80vh; background: #fff; border-radius: 6px;
+           box-shadow: 0 10px 30px rgba(0,0,0,.35); display: flex; flex-direction: column; }
+  #mhead { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px;
+           border-bottom: 1px solid #ddd; font-size: 15px; font-weight: bold; }
+  #mclose { border: none; background: none; font-size: 22px; cursor: pointer; line-height: 1; }
+  #mfilter { margin: 10px 16px 4px; padding: 7px 9px; font-size: 14px; border: 1px solid #999; border-radius: 4px; }
+  /* The three-way switch at the top of the popup: "in the stage at month end", "ever been in the stage" or "only in stage for this month". */
+  #mmode { display: flex; gap: 6px; margin: 10px 16px 0; }
+  .mmode { flex: 1; padding: 7px 8px; font-size: 13px; cursor: pointer; border: 1px solid #999;
+           background: #f4f5f7; border-radius: 4px; }
+  .mmode.on { background: #2f80ed; border-color: #2f80ed; color: #fff; }
+  /* The sort row of the popup: "Sort by" three buttons, then Ascd / Desc at the right. */
+  #msort { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 16px 0; font-size: 13px; }
+  #msort .slabel { color: #666; margin-right: 2px; }
+  .sbtn { padding: 5px 9px; font-size: 13px; cursor: pointer; border: 1px solid #999; background: #f4f5f7;
+          border-radius: 4px; }
+  .sbtn.on { background: #2f80ed; border-color: #2f80ed; color: #fff; }
+  .sbtn:disabled { opacity: .45; cursor: default; }
+  #msort .sgap { flex: 1; }
+  /* The "Show only" row under the filter box: one check box per stage a company is IN NOW, then Select All / None. */
+  #mshow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 8px 16px 0; font-size: 13px; }
+  #mshow .slabel { color: #666; }
+  #mchecks { display: contents; }
+  .nowbox { white-space: nowrap; cursor: pointer; }
+  /* The red asterisk after a company's name: it entered this stage during the month shown. */
+  .new { color: #d00; font-weight: bold; }
+  #mcount { margin: 0 16px 6px; font-size: 12px; color: #666; }
+  #mlist { overflow-y: auto; padding: 0 0 8px; }
+  .mrow { padding: 6px 16px; font-size: 13px; cursor: pointer; border-top: 1px solid #f0f0f0; }
+  .mrow:hover { background: #eef3ff; }
+  .mrow .sub { color: #666; }

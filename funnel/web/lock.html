@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Protected page</title>
+<!-- Same instruction as the real page: do not index, follow, cache or show snippets. -->
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* Centre the password box in the middle of the window. */
+  body { font-family: Arial, Helvetica, sans-serif; background: #f4f5f7; display: flex;
+         align-items: center; justify-content: center; height: 100vh; margin: 0; }
+  #box { background: #fff; padding: 28px 32px; border-radius: 8px; box-shadow: 0 4px 18px rgba(0,0,0,.15);
+         width: 320px; }
+  h1 { font-size: 18px; margin: 0 0 14px; }
+  input { width: 100%; box-sizing: border-box; padding: 9px 10px; font-size: 14px; border: 1px solid #999;
+          border-radius: 4px; }
+  button { margin-top: 12px; width: 100%; padding: 9px; font-size: 14px; cursor: pointer; }
+  /* The message line under the button ("Decrypting ..." or "Incorrect password."). */
+  #msg { margin-top: 10px; font-size: 13px; color: #b91c1c; min-height: 18px; }
+</style></head>
+<body>
+<div id="box">
+  <h1>Enter the password to view this page</h1>
+  <input id="pw" type="password" placeholder="Password" autofocus>
+  <button id="go">Open</button>
+  <div id="msg"></div>
+</div>
+<script>
+// The encrypted page, as Base64 text: 16 bytes salt + 12 bytes nonce + ciphertext (with its
+// 16-byte authentication tag at the end). Python builds it in exactly this order.
+var PAYLOAD = "__PAYLOAD__";
+// The number of PBKDF2 rounds; it must equal the number Python used to make the key.
+var ITER = __ITER__;
+var msg = document.getElementById("msg");
+/**
+ * Try to decrypt the hidden page with the typed password.
+ * Any failure (wrong password, damaged data) shows "Incorrect password.".
+ * On success the lock page is replaced by the decrypted page.
+ */
+async function unlock() {
+  msg.style.color = "#555"; msg.textContent = "Decrypting ...";
+  try {
+    // The browser's crypto API only exists on https:// pages or local files.
+    if (!window.crypto || !crypto.subtle) {
+      msg.style.color = "#b91c1c";
+      msg.textContent = "This page must be opened over https:// (or from a local file).";
+      return;
+    }
+    // Base64 text -> bytes, then split into salt, nonce and encrypted data.
+    var bin = atob(PAYLOAD), raw = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) raw[i] = bin.charCodeAt(i);
+    var salt = raw.slice(0, 16), iv = raw.slice(16, 28), data = raw.slice(28);
+    var enc = new TextEncoder();
+    // Turn the typed password into a key: PBKDF2 with SHA-256 and the same salt/rounds as Python.
+    var base = await crypto.subtle.importKey("raw", enc.encode(document.getElementById("pw").value),
+                                             "PBKDF2", false, ["deriveKey"]);
+    var key = await crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt: salt, iterations: ITER, hash: "SHA-256" }, base,
+      { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+    // AES-GCM decryption also checks the data was not altered; a wrong key throws an error here.
+    var plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, data);
+    var html = new TextDecoder().decode(plain);
+    // Replace this whole page with the decrypted one.
+    document.open(); document.write(html); document.close();
+  } catch (e) {
+    msg.style.color = "#b91c1c";
+    msg.textContent = "Incorrect password.";
+  }
+}
+// Open on a click of the button or on pressing Enter in the password box.
+document.getElementById("go").addEventListener("click", unlock);
+document.getElementById("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") unlock(); });
+</script>
+</body></html>

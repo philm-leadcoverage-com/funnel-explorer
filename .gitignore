@@ -1,0 +1,17 @@
+# HubSpot exports hold client data
+*.csv
+
+# every run writes <client-name>/<date-time>/ with the finished page
+/*/20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]-[0-9][0-9]-[0-9][0-9]-[0-9][0-9]*/
+/input
+/itf-group
+/unilog
+/odw
+/odw-logistics
+
+# pictures the script can save (not password protected)
+*.png
+
+# Python and Node leftovers
+__pycache__/
+node_modules/
