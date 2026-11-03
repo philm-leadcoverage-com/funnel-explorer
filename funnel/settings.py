@@ -164,6 +164,14 @@ MOVED_DOWN_COLOR = "rgba(50,50,50,0.66)"      # ribbons for companies that moved
 HIGHLIGHT_COLOR = "#ff0099"                   # the line drawn for a searched company
 # (Ribbons for companies that moved UP take the color of the bucket they moved into.)
 
+# MARKED_DATES: optional notes flagged under the month they fall in (for example a bulk import or a bulk stage change,
+# so nobody reads that month's jump as growth). Each entry is (date, short text), for example
+#   MARKED_DATES = [(pd.Timestamp("2025-03-04"), "Contacts import")]
+# The text is written in red-orange under the month name at the bottom of the chart. Empty by default: no change.
+MARKED_DATES: list = []
+# STAGE_HOVER: optional text shown when you hover a stage box, one entry per LABELS entry (same order). Empty by default.
+STAGE_HOVER: list = []
+
 # --- HubSpot backfill ---------------------------------------------------------
 # Some portals have one minute where thousands of old companies were stamped with a stage
 # date. That is not a real move. "AUTO" finds it, "" means none, or type a date and time
@@ -293,4 +301,6 @@ class RunSettings:
     # The moment that names the run's output folder (the setup window replaces it with the Run click time).
     run_time: datetime = field(default_factory=datetime.now)
     # Today at midnight: the right edge of the chart and the base of "3 months ago". Fresh for every run.
-    today: pd.Timestamp = field(default_factory=lambda: pd.Timestamp.today().normalize())  # pyright: ignore[reportAssignmentType]
+    # Set the FUNNEL_ASOF environment variable (for example 2026-10-31) to pin the date, so a rebuild of an older export
+    # does not add an empty current month.
+    today: pd.Timestamp = field(default_factory=lambda: pd.Timestamp(os.environ.get("FUNNEL_ASOF") or pd.Timestamp.today()).normalize())  # pyright: ignore[reportAssignmentType]

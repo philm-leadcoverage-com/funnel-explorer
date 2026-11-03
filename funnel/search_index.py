@@ -346,6 +346,8 @@ def step7_build_search_index_and_page_data(ctx: Context) -> None:
         # numbers of the invisible helper boxes / ribbons, which the page hides
         "dummyNodes": [n_real_nodes, n_real_nodes + 1] if use_dummy else [],
         "dummyLinks": list(range(n_real_links, len(src))) if use_dummy else [],
+        # every real ribbon as [start box number, end box number], so a click on a ribbon can list its companies
+        "links": [[int(src[_j]), int(ctx.dst[_j])] for _j in range(n_real_links)],
         "rows": rows,
     }
     # json.dumps writes the data as text. "</" is escaped so the text can never accidentally
