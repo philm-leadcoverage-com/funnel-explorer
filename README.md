@@ -301,6 +301,20 @@ the chart and stay at the top of the chart box while you scroll up and down (the
 chart). The counts under them (+new, carried-over, total) scroll away as usual. The last month is the month so
 far; it is not marked "(to date)".
 
+CLICKING A RIBBON, MARKED DATES AND STAGE HOVER TEXT
+----------------------------------------------------
+Clicking a ribbon (not a box) opens the same company popup for that move: the companies that went from one stage at one
+month end to another stage at the next month end, or from the Pre box into a stage. The popup says whether they
+stayed, moved up or moved down. Helper ribbons do nothing.
+Two optional settings in funnel/settings.py are empty by default, so a run without them looks exactly as before:
+  MARKED_DATES   a list of (date, short text) pairs, for example [(pd.Timestamp("2025-03-04"), "Contacts import")].
+                 The text is written in red-orange under the month the date falls in, at the bottom of the chart, so a
+                 bulk import or bulk stage change is not read as growth. Setting any adds blank space below the chart.
+  STAGE_HOVER    a list of texts, one per LABELS entry in the same order. The text is added to the hover bubble of
+                 that stage's boxes.
+To rebuild an older export without an empty current month, set the environment variable FUNNEL_ASOF (for example
+FUNNEL_ASOF=2026-10-31) before the run. It replaces today's date as the right edge of the chart.
+
 THE CAMERA BUTTON
 -----------------
 Once a company is selected a camera button appears next to Clear. It saves ONE PNG picture of

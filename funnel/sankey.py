@@ -19,6 +19,7 @@ from .settings import (
     LABELS,
     MIN_COL_PX,
     MIN_WIDTH_SHARE,
+    MARKED_DATES,
     MOVED_DOWN_COLOR,
     PRE_BUCKET_COLOR,
     STAYED_COLOR,
@@ -98,6 +99,8 @@ def step5_build_nodes_and_links(ctx: Context) -> None:
     # items that make Plotly behave (explained where they are created).
     print(f"[5/7] Building Sankey (width scaling = {cfg.scale}) ...")
     MARGIN_T, MARGIN_B = 170, 45   # pixels of blank space above the chart (month headers live here) / below it (month names live here)
+    if MARKED_DATES:
+        MARGIN_B = 120             # room for the notes written under the month names
     HEADER_GAP_PX = 60          # space between the month headers and the top of the chart
     EDGE_PAD_PX = 12            # space above the top band and below the bottom band
     PAD_PX = 14                 # plotly's own spacing between boxes (needed for its size math)
@@ -429,13 +432,22 @@ def step6_draw_chart(ctx: Context) -> None:
     # Hand everything built in step 5 to Plotly. arrangement="fixed" tells Plotly to use OUR
     # x/y positions for the boxes instead of choosing its own.
     print("[6/7] Drawing ...")
+    # Optional hover text for each stage box (STAGE_HOVER in settings.py), wrapped with <br> so Plotly shows several short lines.
+    # Boxes that are not month boxes (the Pre box, helper boxes) get no extra text.
+    import textwrap
+    from .settings import STAGE_HOVER
+    node_tip = [""] * len(node_labels)
+    for key_, idx_ in ctx.node_id.items():
+        if len(key_) == 2 and isinstance(key_[0], int) and 0 <= key_[1] < len(STAGE_HOVER) and idx_ < len(node_tip):
+            node_tip[idx_] = "<br>".join(textwrap.wrap(STAGE_HOVER[key_[1]], 55))
     fig = go.Figure(go.Sankey(
         arrangement="fixed",
         # The boxes: label text, fill color and our own x/y position for each one.
         node=dict(label=node_labels, color=node_colors, x=node_x, y=node_y,
                   pad=PAD_PX, thickness=BOX_WIDTH_PX,
                   line=dict(color="#222", width=0.5),
-                  hovertemplate="%{label}<extra></extra>"),
+                  customdata=node_tip,
+                  hovertemplate="%{label}<br>%{customdata}<extra></extra>" if any(node_tip) else "%{label}<extra></extra>"),
         # The part of the figure the chart may use (the top is left free for the month headers).
         domain=dict(x=[0, 1], y=[0, DOMAIN_TOP]),
         # The ribbons: from box number src to box number dst; the drawn width is the scaled value,
@@ -486,7 +498,10 @@ def step6_draw_chart(ctx: Context) -> None:
                            text=f"+{n_new:,} new<br>{total - n_new:,} {CARRIED_LABEL}<br>{total:,} total")
         # the month name again at the bottom of the chart (name only, without the counts above)
         fig.add_annotation(x=float(xs_col[k + OFF]), y=0, xref="paper", yref="paper", xanchor="center", yanchor="top", yshift=-8,
-                           showarrow=False, align="center", text=f"<b>{col_labels[k]}</b>")
+                           showarrow=False, align="center",
+                           text=f"<b>{col_labels[k]}</b>" + "".join(
+                               f'<br><span style="color:#B5460F">{d.month}/{d.day}: {txt}</span>'
+                               for d, txt in MARKED_DATES if d.strftime("%b %Y") == col_labels[k]))
         # dotted vertical guide line through the month column
         fig.add_shape(type="line", xref="paper", yref="paper", layer="below",
                       x0=float(xs_col[k + OFF]), x1=float(xs_col[k + OFF]), y0=0, y1=0.97,
