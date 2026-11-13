@@ -90,7 +90,8 @@
   <div class="hbody">
     <h3>What you are looking at</h3>
     <ul>
-      <li>Each column is the end of one month. Each coloured box is a lifecycle stage (for example Sub, Lead, MQL, SQL, Opp, Cust), and the ribbons between the boxes show how companies moved from one month end to the next.</li>
+      <li>Each column is the end of one month. Each coloured box is a lifecycle stage (for example Sub, Lead, MQL, SQL, Opp, Cust), and the ribbons between the boxes show how companies moved from one month end to the next. The lowest box, Other, holds companies that are unqualified, internal, partners and so on. The first stage uses the name that company's HubSpot gives it, such as Prospect or Target.</li>
+      <li>A company that moves into Other shows as a dark "moved down" ribbon, and one that comes back out is a normal "moved up" ribbon.</li>
       <li>Every box shows two numbers, for example <b>287</b> and <b>(300)</b>. The first is how many companies are IN that stage at the end of the month. The bracketed number is how many have EVER been in that stage up to and including that month, so it never goes down.</li>
       <li>Above each month you see how many companies are new that month, how many were carried over from earlier months, and the total.</li>
       <li>The first column on the left holds companies that were created before the chart starts. Its label tells you what it contains.</li>
@@ -111,8 +112,8 @@
     <h3>The buttons next to the search box</h3>
     <ul>
       <li><b>Random</b>: picks any company on the chart, a quick way to see what a journey looks like.</li>
-      <li><b>Random success</b>: picks a company that is now an Opportunity or Customer, started below MQL, and went from MQL straight to SQL. It is limited to companies created before a cut-off date set when the page was built. Good for showing a typical success story.</li>
-      <li><b>Copy funnel</b>: copies the funnel as plain text you can paste into an email or a document. For each month (newest first) it lists Subscriber, Lead, MQL, SQL, Opp and Customer with how many companies have ever been in that stage, and in brackets how many were added that month (~ means no change).</li>
+      <li><b>Random success</b>: picks a company that is now an Opportunity or Customer, started below MQL, and went from MQL straight to SQL. A company that went to Other and came back can still qualify, but one that is in Other now cannot. It is limited to companies created before a cut-off date set when the page was built. Good for showing a typical success story.</li>
+      <li><b>Copy funnel</b>: copies the funnel as plain text you can paste into an email or a document. For each month (newest first) it lists the first stage (Subscriber, Prospect or Target, as that company calls it), Lead, MQL, SQL, Opp and Customer with how many companies have ever been in that stage, and in brackets how many were added that month (~ means no change).</li>
       <li><b>Camera</b> (appears once a company is selected): saves one picture of the page with the heading, the company panel and the chart with its pink line. Chrome and Edge ask where to save it. Some privacy settings in Firefox save an SVG picture instead of a PNG.</li>
     </ul>
 
@@ -120,11 +121,11 @@
     <ul>
       <li>Click any stage box. A window lists the companies, with how many there are. Click a company's name to close the list and see its journey on the chart.</li>
       <li>The switch at the top chooses the group: <b>in the stage at month end</b> (the first number), <b>ever been in the stage</b> (the bracketed number, including companies that have since moved on), or <b>only in stage for this month</b> (entered during the month and left by the end of the next month, with the day it left shown).</li>
-      <li><b>Sort by</b>: Lexical (A to Z by name), Created (create date) or Entered Stage (date it entered the stage), then Ascd or Desc.</li>
+      <li><b>Sort by</b>: Lexical (A to Z by name), Created (create date) or Entered Stage (date it entered the stage), then Ascd or Desc. A list starts sorted by Entered Stage, newest first.</li>
       <li>The filter box narrows the list by name or domain as you type.</li>
-      <li><b>Show only</b>: tick the stages companies are in NOW (Now Opp, Now Cust, Now SQL and so on). Tick several to see any of them. Select All and Select None tick or untick every box.</li>
+      <li><b>Show only</b>: tick the stages companies are in NOW (Now Opp, Now Cust, Now SQL and so on). Tick several to see any of them. Select All and Select None tick or untick every box. Now Other (companies that are in the Other box now) starts unticked, except in the list of the Other box itself and of ribbons into or out of it; tick it to include them.</li>
       <li>A red asterisk after a name means the company entered that stage during the month shown.</li>
-      <li>The first column's box lists its companies only, without the group switch.</li>
+      <li>The first column's box (and a clicked ribbon) lists its companies only, without the group switch, sorted A to Z because there is no entry date to sort by.</li>
     </ul>
 
     <h3>Moving around the chart</h3>

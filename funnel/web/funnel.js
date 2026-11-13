@@ -490,7 +490,9 @@ window.__fs = function (DATA) {
 
   // Sorting. sortBy: "name" (alphabetical), "created" (create date) or "entered" (date entered the
   // stage). sortAsc: true = ascending, false = descending. The choice is kept while the page stays open.
-  var sortBy = "name", sortAsc = true;
+  // It starts as Entered Stage, newest first. The Pre box and ribbon lists have no entry date, so for those the
+  // list is shown A to Z (sortKey / sortUp below) without losing this choice for the next stage popup.
+  var sortBy = "entered", sortAsc = false;
   var sortBtns = { name: document.getElementById("sname"), created: document.getElementById("screated"),
                    entered: document.getElementById("sentered") };
   var sortAscBtn = document.getElementById("sasc"), sortDscBtn = document.getElementById("sdsc");
@@ -503,10 +505,11 @@ window.__fs = function (DATA) {
   // popWindow = [first day it may have entered, last day it may have left] (days since 1970-01-01).
   var popLeft = {}, popWindow = null;
 
-  // "Show only" check boxes: one per stage a company can be IN NOW (its level is row field 15; -1 = a stage in
-  // no bucket, shown as "Other"). nowOn[level] says whether that box is ticked; a company is listed only when
-  // the box for its current stage is ticked. All boxes start ticked.
-  var NOW_ORDER = [4, 5, 3, 2, 1, 0, -1], nowOn = {}, nowBoxes = {};
+  // "Show only" check boxes: one per stage a company can be IN NOW (its level is row field 15; the lowest box is
+  // "Other"). nowOn[level] says whether that box is ticked; a company is listed only when the box for its current
+  // stage is ticked. The order of the boxes and the level of the Other box come from the data (DATA.nowOrder and
+  // DATA.otherLevel), so the page code does not depend on how many stages an account has.
+  var NOW_ORDER = DATA.nowOrder, nowOn = {}, nowBoxes = {};
   NOW_ORDER.forEach(function (lv) {
     var lab = el("label", "nowbox"), box = document.createElement("input");
     box.type = "checkbox";
@@ -514,7 +517,7 @@ window.__fs = function (DATA) {
     nowOn[lv] = true;
     box.addEventListener("change", function () { nowOn[lv] = box.checked; renderModal(); });
     lab.appendChild(box);
-    lab.appendChild(document.createTextNode(" Now " + (lv >= 0 ? STAGE[lv] : "Other")));
+    lab.appendChild(document.createTextNode(" Now " + STAGE[lv]));
     document.getElementById("mchecks").appendChild(lab);
     nowBoxes[lv] = box;
   });
@@ -525,6 +528,19 @@ window.__fs = function (DATA) {
    */
   function setNowAll(on) {
     NOW_ORDER.forEach(function (lv) { nowOn[lv] = on; nowBoxes[lv].checked = on; });
+  }
+
+  /** The boxes every new popup starts with: all ticked except "Now Other" (companies in the Other box). */
+  function setNowDefault() {
+    setNowAll(true);
+    nowOn[DATA.otherLevel] = false;
+    nowBoxes[DATA.otherLevel].checked = false;
+  }
+
+  /** Tick "Now Other" as well: used when a popup is about the Other box itself, so its list is not empty. */
+  function showOtherToo() {
+    nowOn[DATA.otherLevel] = true;
+    nowBoxes[DATA.otherLevel].checked = true;
   }
 
   /**
@@ -554,18 +570,25 @@ window.__fs = function (DATA) {
    * @return {number} Negative, zero or positive, as for Array.sort.
    */
   function compareRows(a, b) {
-    var cmp = 0;
-    if (sortBy === "created") {
+    var cmp = 0, key = sortKey(), up = sortUp();
+    if (key === "created") {
       cmp = rows[a][3] < rows[b][3] ? -1 : rows[a][3] > rows[b][3] ? 1 : 0;      // YYYY-MM-DD text sorts correctly
-    } else if (sortBy === "entered") {
+    } else if (key === "entered") {
       cmp = (popDay[a] || 0) - (popDay[b] || 0);
     } else {
       cmp = lower[a][0] < lower[b][0] ? -1 : lower[a][0] > lower[b][0] ? 1 : 0;   // alphabetical (lexicographic)
     }
-    if (cmp !== 0) return sortAsc ? cmp : -cmp;
+    if (cmp !== 0) return up ? cmp : -cmp;
     if (lower[a][0] !== lower[b][0]) return lower[a][0] < lower[b][0] ? -1 : 1;
     return a - b;
   }
+
+  /** What the open popup is really sorted by: "Entered Stage" does not exist for the Pre box or a ribbon list, so A to Z is used there. */
+  function sortKey() { return sortBy === "entered" && !popIsStage ? "name" : sortBy; }
+  /** The direction the open popup is really sorted in (A to Z for those lists). */
+  function sortUp() { return sortBy === "entered" && !popIsStage ? true : sortAsc; }
+  /** A click on a sort button in such a list starts from what is shown (A to Z), so the buttons behave as they look. */
+  function commitSort() { if (sortBy === "entered" && !popIsStage) { sortBy = "name"; sortAsc = true; } }
 
   /** Sort both groups of the open popup with the current choice (they may be the same list for the Pre box). */
   function sortLists() {
@@ -577,10 +600,10 @@ window.__fs = function (DATA) {
   /** Show which sort buttons are active. */
   function showSortButtons() {
     Object.keys(sortBtns).forEach(function (key) {
-      sortBtns[key].className = "sbtn" + (sortBy === key ? " on" : "");
+      sortBtns[key].className = "sbtn" + (sortKey() === key ? " on" : "");
     });
-    sortAscBtn.className = "sbtn" + (sortAsc ? " on" : "");
-    sortDscBtn.className = "sbtn" + (sortAsc ? "" : " on");
+    sortAscBtn.className = "sbtn" + (sortUp() ? " on" : "");
+    sortDscBtn.className = "sbtn" + (sortUp() ? "" : " on");
   }
 
   /** Apply a changed sort choice: sort, update the buttons and redraw the list (the filter text stays). */
@@ -673,7 +696,7 @@ window.__fs = function (DATA) {
     popNew = {};
     popLeft = {};
     popWindow = null;
-    setNowAll(true);                                       // every new popup starts with all "Show only" boxes ticked
+    setNowDefault();                                       // every new popup starts with the "Show only" defaults
     if (nodeIdx === DATA.pre) {
       // the Pre box: every charted company flagged as belonging to the Pre bucket
       title = DATA.preName;
@@ -684,12 +707,12 @@ window.__fs = function (DATA) {
       // The Pre bucket is not a stage, so there is no "date entered stage" to sort by.
       popIsStage = false;
       sortBtns.entered.disabled = true;
-      if (sortBy === "entered") sortBy = "name";
     } else {
       // kl = [month column, stage level] for this box.
       var kl = idxKey[nodeIdx];
       // Not a real box (for example one of the invisible helper boxes): do nothing.
       if (!kl) return;
+      if (kl[1] === DATA.otherLevel) showOtherToo();       // the Other box lists companies that are in Other, so show them
       title = STAGE[kl[1]] + " at the end of " + MONTHS[kl[0]];
       var want = String(kl[1]);
       // companies whose month-end stage string has this stage at this month
@@ -765,7 +788,8 @@ window.__fs = function (DATA) {
     if (!b || (!fromPre && !a)) return;
     membersNow = []; membersEver = []; membersShort = [];
     popDay = {}; popNew = {}; popLeft = {}; popWindow = null;
-    setNowAll(true);
+    setNowDefault();
+    if (b[1] === DATA.otherLevel || (a && a[1] === DATA.otherLevel)) showOtherToo();   // a move into or out of Other
     for (var i = 0; i < rows.length; i++) {
       var s = rows[i][4];
       if (!s) continue;
@@ -784,7 +808,6 @@ window.__fs = function (DATA) {
     document.getElementById("mmode").style.display = "none";
     popIsStage = false;
     sortBtns.entered.disabled = true;
-    if (sortBy === "entered") sortBy = "name";
     sortLists();
     showSortButtons();
     popMode = "now";
@@ -799,10 +822,10 @@ window.__fs = function (DATA) {
   mfilter.addEventListener("input", renderModal);
   // Sort buttons: choose what to sort by, and ascending or descending.
   Object.keys(sortBtns).forEach(function (key) {
-    sortBtns[key].addEventListener("click", function () { sortBy = key; resort(); });
+    sortBtns[key].addEventListener("click", function () { commitSort(); sortBy = key; resort(); });
   });
-  sortAscBtn.addEventListener("click", function () { sortAsc = true; resort(); });
-  sortDscBtn.addEventListener("click", function () { sortAsc = false; resort(); });
+  sortAscBtn.addEventListener("click", function () { commitSort(); sortAsc = true; resort(); });
+  sortDscBtn.addEventListener("click", function () { commitSort(); sortAsc = false; resort(); });
   mnow.addEventListener("click", function () { setMode("now"); });
   mever.addEventListener("click", function () { setMode("ever"); });
   mshort.addEventListener("click", function () { setMode("short"); });
@@ -817,7 +840,9 @@ window.__fs = function (DATA) {
   // The number is how many companies have EVER been in the stage up to and including that month (the bracketed
   // number on the chart boxes); the bracket shows how many were added since the month before, "~" when none.
   // The first month has no month before it, so it shows the number only.
-  var COPY_NAMES = ["Subscriber", "Lead", "MQL", "SQL", "Opp", "Customer"];   // the names used in the copied text
+  // COPY_NAMES come from the data, one per stage from the bottom up: the account's own name for its first stage
+  // (Subscriber, Prospect, Target ...), then Lead, MQL, SQL, Opp, Customer. "" = not part of the copied funnel (Other).
+  var COPY_NAMES = DATA.copyNames || STAGE;
   var copyBtn = document.getElementById("copyfunnel");
 
   /**
@@ -838,7 +863,8 @@ window.__fs = function (DATA) {
     for (k = K - 1; k >= 0; k--) {                         // newest month first
       var lines = [MONTHS[k]];
       for (s = 0; s < S; s++) {
-        var n = ever[s][k], line = (COPY_NAMES[s] || STAGE[s]) + ": " + n.toLocaleString("en-US");
+        if (!COPY_NAMES[s]) continue;                      // the Other box is not part of the copied funnel
+        var n = ever[s][k], line = COPY_NAMES[s] + ": " + n.toLocaleString("en-US");
         if (k > 0) { var added = n - ever[s][k - 1]; line += " (" + (added ? "+" + added.toLocaleString("en-US") : "~") + ")"; }
         lines.push(line);
       }

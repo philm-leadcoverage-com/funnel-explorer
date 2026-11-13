@@ -102,6 +102,14 @@ ACCOUNT_START_DATES = {
     "244722849": "2026-06-02",   # W.B. Skinner
 }
 
+# --- Stage names forced for one account ------------------------------------------------
+# The first (Subscriber) box of every chart is labelled with the name the account's own export uses for that stage
+# (Subscriber, Prospect, Target ...). Use this table only to show a DIFFERENT name for an account: portal ID ->
+# {bucket: name}. The buckets are OTHER, SUBSCRIBER, LEAD, MQL, SQL, OPP and CUSTOMER.
+ACCOUNT_STAGE_LABELS = {
+    "20889631": {"SUBSCRIBER": "Prospect"},    # Unilog: its HubSpot stage is "Subscriber" but the chart says Prospect
+}
+
 # The first entry of the portal drop-down: it shows a box where any other portal ID can be typed.
 OTHER_PORTAL_LABEL = "Other - Type ID"
 
@@ -137,6 +145,18 @@ def start_date_for_portal(portal_id: str) -> date | None:
         return date.fromisoformat(text)
     except ValueError:
         return None
+
+
+def stage_label_overrides(portal_id: str) -> dict[str, str]:
+    """The stage names forced for an account in ACCOUNT_STAGE_LABELS ({} when there are none).
+
+    Args:
+        portal_id: The HubSpot portal ID, for example ``"20889631"``.
+
+    Returns:
+        ``{bucket key: name}``, for example ``{"SUBSCRIBER": "Prospect"}``.
+    """
+    return dict(ACCOUNT_STAGE_LABELS.get(str(portal_id).strip(), {}))
 
 
 def client_slug(name: str) -> str:

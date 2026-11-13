@@ -19,7 +19,6 @@ from .settings import (
     DETAIL_LINES,
     HIGHLIGHT_COLOR,
     HUBSPOT_APP_URL,
-    LABELS,
     LOGO_URL_COLUMN,
     PICTURE_SCALE,
 )
@@ -117,13 +116,14 @@ def step7_build_search_index_and_page_data(ctx: Context) -> None:
     # --- values produced by earlier steps ---
     cfg = ctx.cfg
     (
-        BACKFILL, BUCKET_KEYS, NONE, OFF, STAGE_COL, all_idx, col_labels, colors, created_list,
-        cur_list, df, ever_first, fig, n_real_links, n_real_nodes, node_id, paths, pre_keep,
-        skip_reason, snap, src, stage_text_norm, use_dummy, entry_days, month_end_days,
+        BACKFILL, BUCKET_KEYS, NONE, OFF, OTHER_LEVEL, STAGE_COL, all_idx, col_labels, colors, copy_names,
+        created_list, cur_list, df, ever_first, fig, labels, n_real_links, n_real_nodes, node_id, paths,
+        pre_keep, skip_reason, snap, src, stage_text_norm, use_dummy, entry_days, month_end_days,
         month_start_days, via, xs_col,
     ) = (
-        ctx.BACKFILL, ctx.BUCKET_KEYS, ctx.NONE, ctx.OFF, ctx.STAGE_COL, ctx.all_idx,
-        ctx.col_labels, ctx.colors, ctx.created_list, ctx.cur_list, ctx.df, ctx.ever_first, ctx.fig,
+        ctx.BACKFILL, ctx.BUCKET_KEYS, ctx.NONE, ctx.OFF, ctx.OTHER_LEVEL, ctx.STAGE_COL, ctx.all_idx,
+        ctx.col_labels, ctx.colors, ctx.copy_names, ctx.created_list, ctx.cur_list, ctx.df, ctx.ever_first,
+        ctx.fig, ctx.labels,
         ctx.n_real_links, ctx.n_real_nodes, ctx.node_id, ctx.paths, ctx.pre_keep, ctx.skip_reason,
         ctx.snap, ctx.src, ctx.stage_text_norm, ctx.use_dummy, ctx.entry_days, ctx.month_end_days,
         ctx.month_start_days, ctx.via, ctx.xs_col,
@@ -249,9 +249,9 @@ def step7_build_search_index_and_page_data(ctx: Context) -> None:
             cur_stage_dates.append(pd.to_datetime(df[_col].iat[_i], errors="coerce") if _col else pd.NaT)
 
     # Constants for the "Random success" rule (see is_success_journey).
-    MQL_LEVEL = BUCKET_KEYS.index("MQL")                      # level of the MQL bucket (2)
-    SQL_LEVEL = BUCKET_KEYS.index("SQL")                      # level of the SQL bucket (3)
-    OPP_LEVEL = BUCKET_KEYS.index("OPP")                      # level of the Opp bucket (4); Opp and above = "now a success"
+    MQL_LEVEL = BUCKET_KEYS.index("MQL")                      # level of the MQL bucket (3)
+    SQL_LEVEL = BUCKET_KEYS.index("SQL")                      # level of the SQL bucket (4)
+    OPP_LEVEL = BUCKET_KEYS.index("OPP")                      # level of the Opp bucket (5); Opp and above = "now a success"
     success_cutoff = pd.Timestamp(cfg.random_before)   # "Random success" only picks companies created before this date
     # A stage date at the HubSpot backfill minute is not a real move, unless COUNT_BACKFILL_AS_MOVE says so.
     success_backfill = None if COUNT_BACKFILL_AS_MOVE else BACKFILL
@@ -262,19 +262,19 @@ def step7_build_search_index_and_page_data(ctx: Context) -> None:
     #   0 name   1 domain   2 Record ID   3 created (YYYY-MM-DD)   4 month-end stage string
     #   5 current stage text   6 "why not in chart" text (empty = charted)   7 1 if Pre bucket
     #   8 current-stage date   9 1 if that date is the backfill stamp   10 1 if "Random success"
-    #   11 list of 6 numbers: first month column in which the company was in each stage (-1 = never);
+    #   11 list with one number per bucket: first month column in which the company was in each stage (-1 = never);
     #      empty for companies that are not on the chart
     #   12 non-blank extra details as a flat list [field number, value, ...] (see details_for_row)
     #   13 the logo as [prefix number, rest of the address], or "" if there is none
     #   14 every stage entry as [stage, day, stage, day, ...] (days since 1970-01-01); empty for
     #      companies that are not on the chart (see entry_days in step 5)
-    #   15 the level (0..5) of the stage the company is in NOW, or -1 when that stage is in no bucket
-    #      (the popup's "Show only" check boxes: Now Opp, Now Cust ... Now Other)
+    #   15 the level (0..6) of the stage the company is in NOW; 0 = Other (the popup's "Show only" check boxes:
+    #      Now Opp, Now Cust ... Now Other)
     #   16 the stages the company only passed THROUGH inside a month, as [month column, stage, ...] in order;
     #      empty for most companies and for companies that are not on the chart (see via in step 5)
     # snap_strings[r]: one character per month for charted company r ("-" = did not exist yet, otherwise the level
-    # 0..5), made for all companies at once from a small lookup table.
-    snap_strings = ["".join(row) for row in np.array(list("-012345"))[snap - NONE].tolist()]
+    # 0..6), made for all companies at once from a small lookup table.
+    snap_strings = ["".join(row) for row in np.array(["-"] + [str(n) for n in range(len(labels))])[snap - NONE].tolist()]
     rows = []
     for i in range(len(df)):                                  # one row per company, in CSV order
         created = pd.Timestamp(created_list[i])
@@ -290,7 +290,7 @@ def step7_build_search_index_and_page_data(ctx: Context) -> None:
             # PASSED THROUGH MQL and SQL one step at a time (see is_success_journey).
             _times, _levels = paths[keep_row[i]][1], paths[keep_row[i]][2]
             if (created < success_cutoff and cur_list[i] >= OPP_LEVEL
-                    and is_success_journey(_times, _levels, MQL_LEVEL, SQL_LEVEL, success_backfill)):
+                    and is_success_journey(_times, _levels, MQL_LEVEL, SQL_LEVEL, success_backfill, OTHER_LEVEL)):
                 is_success = 1
                 n_success += 1
         else:
@@ -305,8 +305,8 @@ def step7_build_search_index_and_page_data(ctx: Context) -> None:
                      entry_days[keep_row[i]] if i in keep_row else [], cur_list[i],
                      via[keep_row[i]] if i in keep_row else []])
     print(f"      {n_success:,} companies match the Random success button "
-          f"(created before {cfg.random_before}, now {LABELS[OPP_LEVEL]} or {LABELS[OPP_LEVEL + 1]}, started below "
-          f"{LABELS[MQL_LEVEL]}, and went {LABELS[MQL_LEVEL]} then {LABELS[SQL_LEVEL]} without skipping a step)")
+          f"(created before {cfg.random_before}, now {labels[OPP_LEVEL]} or {labels[OPP_LEVEL + 1]}, started below "
+          f"{labels[MQL_LEVEL]}, and went {labels[MQL_LEVEL]} then {labels[SQL_LEVEL]} without skipping a step)")
 
     # Base address of a company record in HubSpot (the Record ID is appended in the page).
     # Empty string = names are not turned into links.
@@ -322,7 +322,11 @@ def step7_build_search_index_and_page_data(ctx: Context) -> None:
         # the column names of the frozen row above the counts (the Pre bucket first), each with its place across the chart (0 to 1)
         "columns": ([[cfg.pre_name, float(xs_col[0])]] if OFF else [])
                    + [[col_labels[k], float(xs_col[k + OFF])] for k in range(len(col_labels))],
-        "stages": LABELS,                                              # stage names for the path text and popups
+        "stages": labels,                                              # stage names for the path text and popups
+        "copyNames": copy_names,                                       # names the Copy funnel button writes ("" = not copied)
+        # the order of the popup's "Show only" check boxes (levels), and the level of the Other box (unticked at first)
+        "nowOrder": [BUCKET_KEYS.index(key) for key in ("OPP", "CUSTOMER", "SQL", "MQL", "LEAD", "SUBSCRIBER", "OTHER")],
+        "otherLevel": OTHER_LEVEL,
         "preName": cfg.pre_name,
         "highlight": HIGHLIGHT_COLOR,
         # "<month>_<level>" -> Plotly box number: lets the page find a company's boxes
