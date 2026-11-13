@@ -751,6 +751,50 @@ window.__fs = function (DATA) {
     mfilter.focus();
   }
 
+  /**
+   * Open the popup for a clicked ribbon: list the companies that made that move between two neighbouring
+   * month ends (or that started in the Pre box and were in that stage at the end of the first month).
+   * The popup has one group only, so the three-way switch is hidden.
+   * @param {number} linkIdx Plotly's number of the clicked ribbon.
+   */
+  function openLink(linkIdx) {
+    var lk = DATA.links && DATA.links[linkIdx];
+    if (!lk) return;                                       // a helper ribbon: do nothing
+    var fromPre = lk[0] === DATA.pre, a = null, b = idxKey[lk[1]];
+    if (!fromPre) a = idxKey[lk[0]];
+    if (!b || (!fromPre && !a)) return;
+    membersNow = []; membersEver = []; membersShort = [];
+    popDay = {}; popNew = {}; popLeft = {}; popWindow = null;
+    setNowAll(true);
+    for (var i = 0; i < rows.length; i++) {
+      var s = rows[i][4];
+      if (!s) continue;
+      if (fromPre) {
+        if (rows[i][7] && !rows[i][6] && s.charAt(0) === String(b[1])) membersNow.push(i);
+      } else if (s.charAt(a[0]) === String(a[1]) && s.charAt(b[0]) === String(b[1])) {
+        membersNow.push(i);
+      }
+    }
+    membersEver = membersNow;
+    var kind = fromPre ? "from " + DATA.preName : a[1] === b[1] ? "stayed" : b[1] > a[1] ? "moved up" : "moved down";
+    mtitle.textContent = fromPre
+      ? DATA.preName + " to " + STAGE[b[1]] + " at the end of " + MONTHS[b[0]]
+      : STAGE[a[1]] + " at the end of " + MONTHS[a[0]] + " to " + STAGE[b[1]] + " at the end of " +
+        MONTHS[b[0]] + " (" + kind + ")";
+    document.getElementById("mmode").style.display = "none";
+    popIsStage = false;
+    sortBtns.entered.disabled = true;
+    if (sortBy === "entered") sortBy = "name";
+    sortLists();
+    showSortButtons();
+    popMode = "now";
+    members = membersNow;
+    mfilter.value = "";
+    renderModal();
+    mbg.style.display = "block";
+    mfilter.focus();
+  }
+
   // Popup events: typing filters the list; the X, a click outside, or Escape closes it.
   mfilter.addEventListener("input", renderModal);
   // Sort buttons: choose what to sort by, and ascending or descending.
@@ -1359,11 +1403,12 @@ window.__fs = function (DATA) {
       hideDummies();
       placeMonthRow();
       goStart();                                           // the chart is drawn now: start at the top right
-      // Clicking a box opens the popup (clicks on ribbons are ignored: they have a "source").
+      // Clicking a box opens the popup for that stage; clicking a ribbon (it has a "source") opens it for that move.
       gd.on("plotly_click", function (ev) {
         var p = ev && ev.points && ev.points[0];
-        if (!p || p.source !== undefined || p.pointNumber === undefined) return;   // nodes only
-        openStage(p.pointNumber);
+        if (!p || p.pointNumber === undefined) return;
+        if (p.source !== undefined) openLink(p.pointNumber);
+        else openStage(p.pointNumber);
       });
       // Every time Plotly redraws, hide the helpers again and re-draw the highlight.
       gd.on("plotly_afterplot", function () { hideDummies(); placeMonthRow(); setTimeout(draw, 50); });
