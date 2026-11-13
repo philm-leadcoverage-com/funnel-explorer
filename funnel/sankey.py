@@ -16,10 +16,9 @@ from .settings import (
     BOX_MAX_PX,
     BOX_WIDTH_PX,
     CARRIED_LABEL,
-    LABELS,
+    MARKED_DATES,
     MIN_COL_PX,
     MIN_WIDTH_SHARE,
-    MARKED_DATES,
     MOVED_DOWN_COLOR,
     PRE_BUCKET_COLOR,
     STAYED_COLOR,
@@ -86,10 +85,11 @@ def step5_build_nodes_and_links(ctx: Context) -> None:
     # --- values produced by earlier steps ---
     cfg = ctx.cfg
     (
-        K, NONE, month_ends, n_pre, paths, pre_mask, snap,
+        K, NONE, labels, month_ends, n_pre, paths, pre_mask, snap,
     ) = (
-        ctx.K, ctx.NONE, ctx.month_ends, ctx.n_pre, ctx.paths, ctx.pre_mask, ctx.snap,
+        ctx.K, ctx.NONE, ctx.labels, ctx.month_ends, ctx.n_pre, ctx.paths, ctx.pre_mask, ctx.snap,
     )
+    n_levels = len(labels)                                    # the number of buckets (Other, Subscriber ... Customer)
 
     # Sankey vocabulary used from here on:
     #   node = a coloured BOX (for example "Lead, Jan 2026, 285 companies")
@@ -152,12 +152,12 @@ def step5_build_nodes_and_links(ctx: Context) -> None:
     # not on the month-end snapshots.
     #   ever_diff[k, lvl]  = number of companies whose FIRST visit to stage lvl happens in month k
     #   ever_in[k, lvl]    = running total of ever_diff up to month k = the number in brackets
-    # ever_first[r] = for company number r, a list of 6 numbers: the first month column in which
+    # ever_first[r] = for company number r, one number per bucket: the first month column in which
     # it was in each stage (-1 = never). The popup uses it to list the companies that have "ever
     # been in" a stage: a company counts for (stage S, month k) when ever_first[r][S] is between
     # 0 and k.
     ever_first = []
-    ever_diff = np.zeros((K + 1, 6), dtype=int)
+    ever_diff = np.zeros((K + 1, n_levels), dtype=int)
     # entry_days[r] = for company number r, every moment it ENTERED a stage, as whole days since
     # 1970-01-01: [stage, day, stage, day, ...]. The popup uses it for the red "new this month"
     # asterisk and for sorting by "Date entered stage".
@@ -174,7 +174,7 @@ def step5_build_nodes_and_links(ctx: Context) -> None:
         for _t, _lv in zip(_times, _lvls):
             if _lv not in first_seen or _t < first_seen[_lv]:
                 first_seen[_lv] = _t
-        _first_k = [-1] * 6                                   # first month column per stage (-1 = never)
+        _first_k = [-1] * n_levels                            # first month column per stage (-1 = never)
         for _lv, _t in first_seen.items():
             _k0 = bisect_left(month_ends, _t)                 # first month whose end is on/after that moment
             if _k0 < K:
@@ -213,13 +213,13 @@ def step5_build_nodes_and_links(ctx: Context) -> None:
         add_node(("pre",), f"{cfg.pre_name}  {n_pre:,}", PRE_BUCKET_COLOR, 0, 5)
     # One box per (month, stage) that has at least one company in it.
     for k in range(K):
-        for lvl in range(6):
+        for lvl in range(n_levels):
             n_here = int((snap[:, k] == lvl).sum())           # how many companies are in this stage this month
             if n_here == 0:
                 continue                       # no box at all for an empty stage
             # label: "Lead  287" on the first line, "(300)" = ever been in this stage on the second
-            add_node((k, lvl), f"{LABELS[lvl]}  {n_here:,}<br>({int(ever_in[k, lvl]):,})",
-                     BAND_COLORS[lvl], k + OFF, 10 - lvl)          # order: Customer top ... Subscriber bottom
+            add_node((k, lvl), f"{labels[lvl]}  {n_here:,}<br>({int(ever_in[k, lvl]):,})",
+                     BAND_COLORS[lvl], k + OFF, 10 - lvl)          # order: Customer top ... Other bottom
 
     # --- the ribbons ---------------------------------------------------------------------
     # Parallel lists describing every ribbon: where it starts (src), where it ends (dst), the
@@ -268,10 +268,10 @@ def step5_build_nodes_and_links(ctx: Context) -> None:
     for k in range(0 if OFF else 1, K):
         # boxes in the previous column (the Pre box when k == 0 and there is a Pre column)
         prev = ([node_id[("pre",)]] if k == 0
-                else [node_id[(k - 1, lvl)] for lvl in range(6) if (k - 1, lvl) in node_id])
+                else [node_id[(k - 1, lvl)] for lvl in range(n_levels) if (k - 1, lvl) in node_id])
         if not prev:                          # nothing in the month before: this is the first column
             continue
-        for lvl in range(6):
+        for lvl in range(n_levels):
             if (k, lvl) in node_id and node_id[(k, lvl)] not in has_incoming:
                 src.append(prev[0])
                 dst.append(node_id[(k, lvl)])
@@ -435,6 +435,7 @@ def step6_draw_chart(ctx: Context) -> None:
     # Optional hover text for each stage box (STAGE_HOVER in settings.py), wrapped with <br> so Plotly shows several short lines.
     # Boxes that are not month boxes (the Pre box, helper boxes) get no extra text.
     import textwrap
+
     from .settings import STAGE_HOVER
     node_tip = [""] * len(node_labels)
     for key_, idx_ in ctx.node_id.items():

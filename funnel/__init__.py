@@ -6,6 +6,7 @@ Run it with ``python lcs-graph.py`` (see README.md). The modules, in the order t
     clients       the HubSpot accounts, their start dates and the per-client names
     dialog        the setup window
     loader        reads the CSV (only the columns it needs) and checks it
+    stages        places every lifecycle stage name of an export in a bucket (Other ... Customer)
     journeys      which companies are charted, each company's journey, month-end snapshots
     sankey        boxes, ribbons and the Plotly figure
     search_index  one data row per company for the page's search box and popups

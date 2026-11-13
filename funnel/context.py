@@ -46,17 +46,22 @@ class Context:
 
     # produced by step0_prepare_settings
     BUCKET_KEYS: Any = None
-    LV: Any = None
+    OTHER_LEVEL: Any = None
     PRE_MIN: Any = None
     SQL_LEVEL: Any = None
+    SUB_LEVEL: Any = None
+    VOCAB: Any = None
 
     # produced by step1_load_and_check_export
     BACKFILL: Any = None
+    LV: Any = None
     STAGE_COL: Any = None
     STAGE_LEVEL: Any = None
+    copy_names: Any = None
     created_list: Any = None
     cur_list: Any = None
     df: Any = None
+    labels: Any = None
     stage_dates: Any = None
     stage_text_norm: Any = None
     start: Any = None

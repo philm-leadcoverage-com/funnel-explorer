@@ -136,28 +136,37 @@ START = pd.Timestamp("2025-01-01")
 # when SHOW_DIALOG is False, and when the window's "Pre-bucket name" box is left blank.
 PRE_BUCKET_NAME = "Pre-LeadCoverage"      # the text shown for the bucket before START
 # PRE_BUCKET_MIN_STAGE: an older company only enters the Pre bucket if, on or after START, it
-# reached this stage or higher. Allowed: LEAD, MQL, SQL, OPP, CUSTOMER (never SUBSCRIBER).
+# reached this stage or higher. Allowed: LEAD, MQL, SQL, OPP, CUSTOMER (never SUBSCRIBER or OTHER).
 PRE_BUCKET_MIN_STAGE = "MQL"              # LEAD, MQL, SQL, OPP or CUSTOMER
 
 # --- Lifecycle stage buckets (bottom of the chart to the top) -----------------
-# Each one is a comma separated list of HubSpot lifecycle stage names, not case sensitive.
-# A stage can be in only one bucket. Leave a bucket as "" if the client does not use it.
-# The six buckets are stacked on the chart in this order: SUBSCRIBER at the bottom,
-# CUSTOMER at the top. Several HubSpot stages can share one bucket ("SUBSCRIBER, OTHER").
-SUBSCRIBER = "SUBSCRIBER, OTHER, SUPPLY CHAIN PARTNER, PARTNER"
-LEAD = "LEAD"
+# The chart stacks seven buckets: OTHER at the very bottom (unqualified, internal, partners and so on), then
+# SUBSCRIBER, LEAD, MQL, SQL and OPP, with CUSTOMER at the top. Each one is a comma separated list of stage names, not
+# case sensitive. It is ONE list for every account: the script reads the stage names it finds in each export and puts
+# every one in a bucket, so a new account normally needs no change here. How a name is matched (see stages.py):
+#   * a name is matched against the lists as whole words, and the longest listed name wins
+#     ("Marketing Qualified Lead" is MQL, not Lead; "Not Right for Circle" is Other because NOT RIGHT FOR is listed);
+#   * a hint in brackets is read first: "Awareness (MQL)" is MQL, "Development (Customer)" is Customer;
+#   * a small typo is forgiven ("Propsect" is read as PROSPECT, "Unqualifed" as UNQUALIFIED);
+#   * a name that matches nothing goes to OTHER, with a warning, so every company is still counted.
+# Two names in one bucket ("Marketing Qualified Lead" and "MQL") are combined. A name listed in two buckets stops the
+# script. Leave a bucket as "" if nobody uses it (an account with no Subscriber stage just has an empty bottom box).
+OTHER = "OTHER, UNQUALIFIED, DISQUALIFIED, NOT RIGHT FOR, INTERNAL, AGENT, PARTNER, SUPPLY CHAIN PARTNER"
+SUBSCRIBER = "SUBSCRIBER, TARGET, PROSPECT"
+LEAD = "LEAD, IQL, MARKETING ENROLLED"
 MQL = "MARKETING QUALIFIED LEAD, MARKETING ACCEPTED LEAD, MQL, MAL"
-SQL = "SALES QUALIFIED LEAD, SALES ACCEPTED LEAD, SQL, SAL"
-OPP = "OPPORTUNITY, OPP, DEAL"
-CUSTOMER = "CUSTOMER, EVANGELIST, FORMER CUSTOMER"
-# LABELS: the six names printed on the chart, in the same order as the buckets above
-# (bottom to top). They may differ from the HubSpot names (for example "Prospect").
-LABELS = ["Sub", "Lead", "MQL", "SQL", "Opp", "Cust"]   # names shown on the chart
+SQL = "SALES QUALIFIED LEAD, SALES ACCEPTED LEAD, SALES LEAD, SQL, SAL, PROSPECTING, APPLICANT SCREENING"
+OPP = "OPPORTUNITY, OPP, DEAL, OFFER, HIRED"
+CUSTOMER = "CUSTOMER, EVANGELIST, PROMOTER, FORMER CUSTOMER, TRANSACTIONAL"
+# LABELS: the seven names printed on the chart, in the same order as the buckets above (bottom to top). The Subscriber
+# box does not use its entry here when the export has its own name for that stage: it then shows that name (Prospect,
+# Target ...). ACCOUNT_STAGE_LABELS in clients.py can force a different name for one account.
+LABELS = ["Other", "Sub", "Lead", "MQL", "SQL", "Opp", "Cust"]   # names shown on the chart
 
 # --- Colors -------------------------------------------------------------------
 # Any CSS color works: "#rrggbb" hex or "rgba(r,g,b,alpha)" where alpha is 0 (clear) to 1.
 # BAND_COLORS: the box color of each bucket, bottom to top (same order as LABELS).
-BAND_COLORS = ["#7f8c9a", "#2f80ed", "#8e44ad", "#f39c12", "#884c3c", "#16a34a"]  # one per bucket, same order as LABELS
+BAND_COLORS = ["#b9c0c9", "#7f8c9a", "#2f80ed", "#8e44ad", "#f39c12", "#884c3c", "#16a34a"]  # one per bucket, same order as LABELS
 PRE_BUCKET_COLOR = "#34495e"                  # the Pre bucket box
 STAYED_COLOR = "rgba(180,180,180,0.33)"       # ribbons for companies that stayed in the same bucket
 MOVED_DOWN_COLOR = "rgba(50,50,50,0.66)"      # ribbons for companies that moved down a bucket
@@ -169,7 +178,8 @@ HIGHLIGHT_COLOR = "#ff0099"                   # the line drawn for a searched co
 #   MARKED_DATES = [(pd.Timestamp("2025-03-04"), "Contacts import")]
 # The text is written in red-orange under the month name at the bottom of the chart. Empty by default: no change.
 MARKED_DATES: list = []
-# STAGE_HOVER: optional text shown when you hover a stage box, one entry per LABELS entry (same order). Empty by default.
+# STAGE_HOVER: optional text shown when you hover a stage box, one entry per LABELS entry (same order, so the first is for Other).
+# Empty by default.
 STAGE_HOVER: list = []
 
 # --- HubSpot backfill ---------------------------------------------------------
@@ -303,4 +313,4 @@ class RunSettings:
     # Today at midnight: the right edge of the chart and the base of "3 months ago". Fresh for every run.
     # Set the FUNNEL_ASOF environment variable (for example 2026-10-31) to pin the date, so a rebuild of an older export
     # does not add an empty current month.
-    today: pd.Timestamp = field(default_factory=lambda: pd.Timestamp(os.environ.get("FUNNEL_ASOF") or pd.Timestamp.today()).normalize())  # pyright: ignore[reportAssignmentType]
+    today: pd.Timestamp = field(default_factory=lambda: pd.Timestamp(os.environ.get("FUNNEL_ASOF") or pd.Timestamp.today()).normalize())  # pyright: ignore[reportAssignmentType, reportAttributeAccessIssue]
