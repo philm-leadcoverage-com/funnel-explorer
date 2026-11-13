@@ -812,6 +812,69 @@ window.__fs = function (DATA) {
   mbg.addEventListener("mousedown", function (ev) { if (ev.target === mbg) mbg.style.display = "none"; });
   document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") mbg.style.display = "none"; });
 
+  // ---- the "Copy funnel" button: copy every month's funnel numbers as plain text ----
+  // For each month (newest first) one line per stage, in funnel order:  "MQL: 109 (+3)".
+  // The number is how many companies have EVER been in the stage up to and including that month (the bracketed
+  // number on the chart boxes); the bracket shows how many were added since the month before, "~" when none.
+  // The first month has no month before it, so it shows the number only.
+  var COPY_NAMES = ["Subscriber", "Lead", "MQL", "SQL", "Opp", "Customer"];   // the names used in the copied text
+  var copyBtn = document.getElementById("copyfunnel");
+
+  /**
+   * Build the text that the Copy funnel button copies.
+   * @return {string} One block per month, separated by a blank line.
+   */
+  function funnelText() {
+    var K = MONTHS.length, S = STAGE.length, ever = [], s, k;
+    for (s = 0; s < S; s++) { ever.push([]); for (k = 0; k < K; k++) ever[s].push(0); }
+    // count each company in the month it FIRST reached each stage (row field 11), then add the months up
+    rows.forEach(function (r) {
+      var first = r[11];
+      if (!first || !first.length) return;
+      for (var st = 0; st < S; st++) if (first[st] >= 0 && first[st] < K) ever[st][first[st]]++;
+    });
+    for (s = 0; s < S; s++) for (k = 1; k < K; k++) ever[s][k] += ever[s][k - 1];
+    var blocks = [];
+    for (k = K - 1; k >= 0; k--) {                         // newest month first
+      var lines = [MONTHS[k]];
+      for (s = 0; s < S; s++) {
+        var n = ever[s][k], line = (COPY_NAMES[s] || STAGE[s]) + ": " + n.toLocaleString("en-US");
+        if (k > 0) { var added = n - ever[s][k - 1]; line += " (" + (added ? "+" + added.toLocaleString("en-US") : "~") + ")"; }
+        lines.push(line);
+      }
+      blocks.push(lines.join("\n"));
+    }
+    return blocks.join("\n\n");
+  }
+
+  /**
+   * Copy text with the old textarea trick (for browsers that do not offer the clipboard to this page).
+   * @param {string} text The text.
+   * @return {boolean} True when the browser says it was copied.
+   */
+  function copyOldWay(text) {
+    var box = document.createElement("textarea");
+    box.value = text; box.style.position = "fixed"; box.style.opacity = "0";
+    document.body.appendChild(box); box.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(box);
+    return ok;
+  }
+
+  copyBtn.addEventListener("click", function () {
+    var text = funnelText();
+    var done = function (ok) {
+      copyBtn.textContent = ok ? "Copied!" : "Copy failed";
+      setTimeout(function () { copyBtn.textContent = "Copy funnel"; }, 1500);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(copyOldWay(text)); });
+    } else {
+      done(copyOldWay(text));
+    }
+  });
+
   // ---- the camera button: save a picture of the page ----
   // The picture is built here in the browser (no extra library): the page heading and notes, the
   // selected company's panel (with its logo when the logo's server allows it), and the chart with

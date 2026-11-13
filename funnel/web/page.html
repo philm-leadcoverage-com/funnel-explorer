@@ -18,11 +18,13 @@
     <input id="q" type="text" placeholder="Search company name or domain, then press Enter" autocomplete="off">
     <div id="sug"></div>
   </div>
+  <button id="help" type="button" title="What everything on this page does" style="padding:0 12px;font-size:14px;line-height:1;margin-left:6px;cursor:pointer" onclick="document.getElementById('helpdlg').showModal()">Help / Info</button>
   <button id="rand">Random</button>
   <button id="success">Random success</button>
   <button id="clear">Clear</button>
   <!-- Camera button: saves a picture of the page (hidden until a company is selected). -->
   <button id="snap" title="Save a picture of this page">&#128247;</button><span id="snapmsg"></span>
+  <button id="copyfunnel" type="button" title="Copy the funnel numbers of every month as text" style="padding:0 12px;font-size:14px;line-height:1;margin-left:6px;cursor:pointer">Copy funnel</button>
   <div id="info"></div>
 </div>
 <!-- The chart box: the scrolling chart (inserted by Python) with the frozen month row and the empty highlight
@@ -69,6 +71,77 @@
     <div id="mlist"></div>
   </div>
 </div>
+<!-- Help / Info window (a native dialog: Escape, the X or a click outside closes it). -->
+<style>
+  #helpdlg { width: 700px; max-width: 94vw; max-height: 84vh; padding: 0; border: 1px solid #999; border-radius: 8px;
+             font: 14px/1.45 Arial, Helvetica, sans-serif; color: #222; }
+  #helpdlg::backdrop { background: rgba(0, 0, 0, .45); }
+  #helpdlg .hhead { position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center;
+                    padding: 10px 18px; background: #f4f5f7; border-bottom: 1px solid #ddd; font-size: 16px; }
+  #helpdlg .hhead button { border: 0; background: none; font-size: 26px; line-height: 1; cursor: pointer; }
+  #helpdlg .hbody { padding: 2px 18px 16px; }
+  #helpdlg h3 { margin: 16px 0 4px; font-size: 15px; color: #1f4e9c; }
+  #helpdlg ul { margin: 4px 0 0; padding-left: 20px; }
+  #helpdlg li { margin: 3px 0; }
+  #helpdlg .ex { background: #eef3ff; border-left: 3px solid #2f80ed; padding: 6px 10px; margin: 8px 0; }
+</style>
+<dialog id="helpdlg" onclick="if (event.target === this) this.close()">
+  <div class="hhead"><b>Help / Info: how to use this page</b><button type="button" title="Close" onclick="document.getElementById('helpdlg').close()">&times;</button></div>
+  <div class="hbody">
+    <h3>What you are looking at</h3>
+    <ul>
+      <li>Each column is the end of one month. Each coloured box is a lifecycle stage (for example Sub, Lead, MQL, SQL, Opp, Cust), and the ribbons between the boxes show how companies moved from one month end to the next.</li>
+      <li>Every box shows two numbers, for example <b>287</b> and <b>(300)</b>. The first is how many companies are IN that stage at the end of the month. The bracketed number is how many have EVER been in that stage up to and including that month, so it never goes down.</li>
+      <li>Above each month you see how many companies are new that month, how many were carried over from earlier months, and the total.</li>
+      <li>The first column on the left holds companies that were created before the chart starts. Its label tells you what it contains.</li>
+      <li>Ribbon colours: grey means the companies stayed in the same stage, a colour means they moved up, dark grey means they moved down. Hover over a ribbon to see the exact number of companies. Ribbon widths are scaled so small groups stay visible, so compare the numbers, not the widths.</li>
+      <li>Click a ribbon to list the companies that made that move between two month ends (or from the first column into a stage). The window says whether they stayed, moved up or moved down.</li>
+      <li>If a short orange note appears under a month name, it explains something that happened that month, such as a bulk import, so the jump is not read as growth. Some stage boxes may also show a short description when you hover over them.</li>
+    </ul>
+
+    <h3>Search for a company</h3>
+    <ul>
+      <li>Type part of a company name or domain. Suggestions appear as you type. Click one, or press Enter to take the best match. Press Esc to clear everything.</li>
+      <li>A panel appears with the company's logo, its name (a link to its HubSpot record), domain, Record ID, created date, current stage and extra details such as owner, industry and recent activity. Blank values are left out.</li>
+      <li>Its month-end path lists the stage it was in at the end of each month. Stages it only passed through during a month are marked "passed through".</li>
+      <li>A pink line follows the company's journey box by box on the chart. Stages it passed through inside a month are outlined as well.</li>
+      <li><b>Clear</b> removes the selected company and the pink line.</li>
+    </ul>
+
+    <h3>The buttons next to the search box</h3>
+    <ul>
+      <li><b>Random</b>: picks any company on the chart, a quick way to see what a journey looks like.</li>
+      <li><b>Random success</b>: picks a company that is now an Opportunity or Customer, started below MQL, and went from MQL straight to SQL. It is limited to companies created before a cut-off date set when the page was built. Good for showing a typical success story.</li>
+      <li><b>Copy funnel</b>: copies the funnel as plain text you can paste into an email or a document. For each month (newest first) it lists Subscriber, Lead, MQL, SQL, Opp and Customer with how many companies have ever been in that stage, and in brackets how many were added that month (~ means no change).</li>
+      <li><b>Camera</b> (appears once a company is selected): saves one picture of the page with the heading, the company panel and the chart with its pink line. Chrome and Edge ask where to save it. Some privacy settings in Firefox save an SVG picture instead of a PNG.</li>
+    </ul>
+
+    <h3>Click a box to list its companies</h3>
+    <ul>
+      <li>Click any stage box. A window lists the companies, with how many there are. Click a company's name to close the list and see its journey on the chart.</li>
+      <li>The switch at the top chooses the group: <b>in the stage at month end</b> (the first number), <b>ever been in the stage</b> (the bracketed number, including companies that have since moved on), or <b>only in stage for this month</b> (entered during the month and left by the end of the next month, with the day it left shown).</li>
+      <li><b>Sort by</b>: Lexical (A to Z by name), Created (create date) or Entered Stage (date it entered the stage), then Ascd or Desc.</li>
+      <li>The filter box narrows the list by name or domain as you type.</li>
+      <li><b>Show only</b>: tick the stages companies are in NOW (Now Opp, Now Cust, Now SQL and so on). Tick several to see any of them. Select All and Select None tick or untick every box.</li>
+      <li>A red asterisk after a name means the company entered that stage during the month shown.</li>
+      <li>The first column's box lists its companies only, without the group switch.</li>
+    </ul>
+
+    <h3>Moving around the chart</h3>
+    <ul>
+      <li>Use the scroll bars, your mouse wheel or trackpad. The four round arrows in the bottom right corner jump to the top, left, bottom or right edge of the chart. The chart starts at the top right so the newest months are in view.</li>
+      <li>The month names stay at the top while you scroll up and down.</li>
+    </ul>
+
+    <h3>Examples of what you might want to do</h3>
+    <div class="ex"><b>See all MQLs that are now deals.</b> Click the MQL box in the latest month and choose "ever been in the stage". Under Show only, click Select None, then tick Now Opp (and Now Cust if you count customers). The list shows only those companies, with the count.</div>
+    <div class="ex"><b>See how many companies moved from MQL to SQL between two months.</b> Click the ribbon that joins the MQL box in the first month to the SQL box in the next month. The window lists exactly those companies, with the count (hovering over the ribbon shows the count too). For a longer period, add up the ribbons month by month.</div>
+    <div class="ex"><b>See who reached SQL during one month.</b> Click the SQL box for that month, choose "in the stage at month end" and sort by Entered Stage, Desc. Companies with a red asterisk entered SQL that month.</div>
+    <div class="ex"><b>Find companies that only passed through a stage.</b> Click the stage box for a month and choose "only in stage for this month". It lists companies that entered and left again by the end of the next month.</div>
+    <div class="ex"><b>Check what happened to one company.</b> Search for its name, then read its month-end path and follow the pink line on the chart.</div>
+    <div class="ex"><b>Show a success story to a client.</b> Click Random success until you find a good one, then click the camera to save the picture.</div>
+  </div>
+</dialog>
 <!-- The page code (a separate file) and then the call that starts it, with the data as its argument. -->
 <script src="assets/funnel.js?v=__JS_V__"></script>
 <script>
